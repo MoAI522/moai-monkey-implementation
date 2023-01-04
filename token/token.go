@@ -24,6 +24,7 @@ const (
 	LT        = "<"
 	GT        = ">"
 	COMMA     = ","
+	COLON     = ":"
 	SEMICOLON = ";"
 	LPAREN    = "("
 	RPAREN    = ")"
