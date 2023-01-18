@@ -3,7 +3,9 @@ package evaluator
 import (
 	"fmt"
 	"monkey/ast"
+	"monkey/lexer"
 	"monkey/object"
+	"monkey/parser"
 )
 
 var (
@@ -76,7 +78,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		if len(args) == 1 && isError(args[0]) {
 			return args[0]
 		}
-		return applyFunction(function, args)
+		return applyFunction(function, args, env)
 	case *ast.ArrayLiteral:
 		elements := evalExpressions(node.Elements, env)
 		if len(elements) == 1 && isError(elements[0]) {
@@ -276,6 +278,9 @@ func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object
 	if builtin, ok := buildins[node.Value]; ok {
 		return builtin
 	}
+	if node.Value == "eval" {
+		return &object.BuiltinEval{}
+	}
 
 	return newError("identifier not found: " + node.Value)
 }
@@ -295,7 +300,7 @@ func evalExpressions(
 	return result
 }
 
-func applyFunction(fn object.Object, args []object.Object) object.Object {
+func applyFunction(fn object.Object, args []object.Object, env *object.Environment) object.Object {
 	switch fn := fn.(type) {
 	case *object.Function:
 		extendedEnv := extendFunctionEnv(fn, args)
@@ -303,6 +308,8 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 		return unwrapReturnValue(evaluated)
 	case *object.Builtin:
 		return fn.Fn(args...)
+	case *object.BuiltinEval:
+		return builtinEvalFunction(args[0], env)
 	default:
 		return newError("not a function: %s", fn.Type())
 	}
@@ -380,4 +387,19 @@ func evalHashIndexExpression(hash, index object.Object) object.Object {
 		return NULL
 	}
 	return pair.Value
+}
+
+func builtinEvalFunction(obj object.Object, env *object.Environment) object.Object {
+	if obj.Type() != object.STRING_OBJ {
+		return newError("argument of eval must be string. got=%T", obj.Type())
+	}
+	str, _ := obj.(*object.String)
+	l := lexer.New(str.Value)
+	p := parser.New(l)
+	program := p.ParseProgram()
+	if len(p.Errors()) != 0 {
+		return newError("parse error at `eval`: %q", p.Errors())
+	}
+	extendedenv := object.NewEnclosedEnvironment(env)
+	return Eval(program, extendedenv)
 }

@@ -19,6 +19,7 @@ const (
 	ERROR_OBJ        = "ERROR"
 	FUNCTION_OBJ     = "FUNCTION"
 	BUILTIN_OBJ      = "BUILTIN"
+	BUILTIN_EVAL_OBJ = "BUILTIN_EVAL"
 	ARRAY_OBJ        = "ARRAY"
 	HASH_OBJ         = "HASH"
 	QUOTE_OBJ        = "QUOTE"
@@ -100,6 +101,11 @@ type Builtin struct {
 
 func (b *Builtin) Type() ObjectType { return BUILTIN_OBJ }
 func (b *Builtin) Inspect() string  { return "builtin function" }
+
+type BuiltinEval struct{}
+
+func (be *BuiltinEval) Type() ObjectType { return BUILTIN_EVAL_OBJ }
+func (be *BuiltinEval) Inspect() string  { return "builtin eval function" }
 
 type Array struct {
 	Elements []Object
