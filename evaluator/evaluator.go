@@ -14,23 +14,23 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
-func Eval(node ast.Node, env *object.Environment) object.Object {
+func Eval(node ast.Node, env *object.Environment, threadPool *object.ThreadPool) object.Object {
 	switch node := node.(type) {
 	// Statements
 	case *ast.Program:
-		return evalProgram(node.Statements, env)
+		return evalProgram(node.Statements, env, threadPool)
 	case *ast.ExpressionStatement:
-		return Eval(node.Expression, env)
+		return Eval(node.Expression, env, threadPool)
 	case *ast.BlockStatement:
-		return evalBlockStatements(node, env)
+		return evalBlockStatements(node, env, threadPool)
 	case *ast.ReturnStatement:
-		val := Eval(node.ReturnValue, env)
+		val := Eval(node.ReturnValue, env, threadPool)
 		if isError(val) {
 			return val
 		}
 		return &object.ReturnValue{Value: val}
 	case *ast.LetStatement:
-		val := Eval(node.Value, env)
+		val := Eval(node.Value, env, threadPool)
 		if isError(val) {
 			return val
 		}
@@ -43,23 +43,23 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.StringLiteral:
 		return &object.String{Value: node.Value}
 	case *ast.PrefixExpression:
-		right := Eval(node.Right, env)
+		right := Eval(node.Right, env, threadPool)
 		if isError(right) {
 			return right
 		}
 		return evalPrefixExpression(node.Operator, right)
 	case *ast.InfixExpression:
-		left := Eval(node.Left, env)
+		left := Eval(node.Left, env, threadPool)
 		if isError(left) {
 			return left
 		}
-		right := Eval(node.Right, env)
+		right := Eval(node.Right, env, threadPool)
 		if isError(right) {
 			return right
 		}
 		return evalInfixExpression(node.Operator, left, right)
 	case *ast.IfExpression:
-		return evalIfExpression(node, env)
+		return evalIfExpression(node, env, threadPool)
 	case *ast.Identifier:
 		return evalIdentifier(node, env)
 	case *ast.FunctionLiteral:
@@ -68,43 +68,43 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return &object.Function{Parameters: params, Env: env, Body: body}
 	case *ast.CallExpression:
 		if node.Function.TokenLiteral() == "quote" {
-			return quote(node.Arguments[0], env)
+			return quote(node.Arguments[0], env, threadPool)
 		}
-		function := Eval(node.Function, env)
+		function := Eval(node.Function, env, threadPool)
 		if isError(function) {
 			return function
 		}
-		args := evalExpressions(node.Arguments, env)
+		args := evalExpressions(node.Arguments, env, threadPool)
 		if len(args) == 1 && isError(args[0]) {
 			return args[0]
 		}
-		return applyFunction(function, args, env)
+		return applyFunction(function, args, env, threadPool)
 	case *ast.ArrayLiteral:
-		elements := evalExpressions(node.Elements, env)
+		elements := evalExpressions(node.Elements, env, threadPool)
 		if len(elements) == 1 && isError(elements[0]) {
 			return elements[0]
 		}
 		return &object.Array{Elements: elements}
 	case *ast.IndexExpression:
-		left := Eval(node.Left, env)
+		left := Eval(node.Left, env, threadPool)
 		if isError(left) {
 			return left
 		}
-		index := Eval(node.Index, env)
+		index := Eval(node.Index, env, threadPool)
 		if isError(index) {
 			return index
 		}
 		return evalIndexExpression(left, index)
 	case *ast.HashLiteral:
-		return evalHashLiteral(node, env)
+		return evalHashLiteral(node, env, threadPool)
 	}
 	return nil
 }
 
-func evalProgram(stmts []ast.Statement, env *object.Environment) object.Object {
+func evalProgram(stmts []ast.Statement, env *object.Environment, threadPool *object.ThreadPool) object.Object {
 	var result object.Object
 	for _, statement := range stmts {
-		result = Eval(statement, env)
+		result = Eval(statement, env, threadPool)
 
 		switch result := result.(type) {
 		case *object.ReturnValue:
@@ -119,10 +119,10 @@ func evalProgram(stmts []ast.Statement, env *object.Environment) object.Object {
 	return result
 }
 
-func evalBlockStatements(block *ast.BlockStatement, env *object.Environment) object.Object {
+func evalBlockStatements(block *ast.BlockStatement, env *object.Environment, threadPool *object.ThreadPool) object.Object {
 	var result object.Object
 	for _, statement := range block.Statements {
-		result = Eval(statement, env)
+		result = Eval(statement, env, threadPool)
 		if result != nil {
 			rt := result.Type()
 			if rt == object.RETURN_VALUE_OBJ || rt == object.ERROR_OBJ {
@@ -232,16 +232,16 @@ func evalStringInfixExpression(operator string, left, right object.Object) objec
 	}
 }
 
-func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Object {
-	condition := Eval(ie.Condition, env)
+func evalIfExpression(ie *ast.IfExpression, env *object.Environment, threadPool *object.ThreadPool) object.Object {
+	condition := Eval(ie.Condition, env, threadPool)
 	if isError(condition) {
 		return condition
 	}
 
 	if isTruthy(condition) {
-		return Eval(ie.Consequence, env)
+		return Eval(ie.Consequence, env, threadPool)
 	} else if ie.Alternative != nil {
-		return Eval(ie.Alternative, env)
+		return Eval(ie.Alternative, env, threadPool)
 	} else {
 		return NULL
 	}
@@ -272,14 +272,20 @@ func isError(obj object.Object) bool {
 }
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
+	switch node.Value {
+	case "eval":
+		return &object.BuiltinEval{}
+	case "launch":
+		return &object.BuiltinLaunch{}
+	case "await":
+		return &object.BuiltinAwait{}
+	}
+
 	if val, ok := env.Get(node.Value); ok {
 		return val
 	}
 	if builtin, ok := buildins[node.Value]; ok {
 		return builtin
-	}
-	if node.Value == "eval" {
-		return &object.BuiltinEval{}
 	}
 
 	return newError("identifier not found: " + node.Value)
@@ -288,10 +294,11 @@ func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object
 func evalExpressions(
 	exps []ast.Expression,
 	env *object.Environment,
+	threadPool *object.ThreadPool,
 ) []object.Object {
 	var result []object.Object
 	for _, e := range exps {
-		evaluated := Eval(e, env)
+		evaluated := Eval(e, env, threadPool)
 		if isError(evaluated) {
 			return []object.Object{evaluated}
 		}
@@ -300,16 +307,20 @@ func evalExpressions(
 	return result
 }
 
-func applyFunction(fn object.Object, args []object.Object, env *object.Environment) object.Object {
+func applyFunction(fn object.Object, args []object.Object, env *object.Environment, threadPool *object.ThreadPool) object.Object {
 	switch fn := fn.(type) {
 	case *object.Function:
 		extendedEnv := extendFunctionEnv(fn, args)
-		evaluated := Eval(fn.Body, extendedEnv)
+		evaluated := Eval(fn.Body, extendedEnv, threadPool)
 		return unwrapReturnValue(evaluated)
 	case *object.Builtin:
 		return fn.Fn(args...)
 	case *object.BuiltinEval:
-		return builtinEvalFunction(args[0], env)
+		return builtinEvalFunction(args[0], env, threadPool)
+	case *object.BuiltinLaunch:
+		return builtinLaunchFunction(args[0], env, threadPool)
+	case *object.BuiltinAwait:
+		return builtinAwaitFunction(args[0], threadPool)
 	default:
 		return newError("not a function: %s", fn.Type())
 	}
@@ -353,10 +364,10 @@ func evalArrayIndexExpression(array, index object.Object) object.Object {
 	return arrayObject.Elements[idx]
 }
 
-func evalHashLiteral(node *ast.HashLiteral, env *object.Environment) object.Object {
+func evalHashLiteral(node *ast.HashLiteral, env *object.Environment, threadPool *object.ThreadPool) object.Object {
 	pairs := make(map[object.HashKey]object.HashPair)
 	for keyNode, valueNode := range node.Pairs {
-		key := Eval(keyNode, env)
+		key := Eval(keyNode, env, threadPool)
 		if isError(key) {
 			return key
 		}
@@ -365,7 +376,7 @@ func evalHashLiteral(node *ast.HashLiteral, env *object.Environment) object.Obje
 		if !ok {
 			return newError("unusuable as hash key: %s", key.Type())
 		}
-		value := Eval(valueNode, env)
+		value := Eval(valueNode, env, threadPool)
 		if isError(value) {
 			return value
 		}
@@ -389,7 +400,7 @@ func evalHashIndexExpression(hash, index object.Object) object.Object {
 	return pair.Value
 }
 
-func builtinEvalFunction(obj object.Object, env *object.Environment) object.Object {
+func builtinEvalFunction(obj object.Object, env *object.Environment, threadPool *object.ThreadPool) object.Object {
 	if obj.Type() != object.STRING_OBJ {
 		return newError("argument of eval must be string. got=%T", obj.Type())
 	}
@@ -401,5 +412,46 @@ func builtinEvalFunction(obj object.Object, env *object.Environment) object.Obje
 		return newError("parse error at `eval`: %q", p.Errors())
 	}
 	extendedenv := object.NewEnclosedEnvironment(env)
-	return Eval(program, extendedenv)
+	return Eval(program, extendedenv, threadPool)
+}
+
+func builtinLaunchFunction(obj object.Object, env *object.Environment, threadPool *object.ThreadPool) object.Object {
+	if obj.Type() != object.FUNCTION_OBJ {
+		return newError("argument for launch must be FUNCTION. got=%T", obj.Type())
+	}
+
+	fn, _ := obj.(*object.Function)
+	extendedEnv := object.NewEnclosedEnvironment(env)
+	c := make(chan object.Object, 2)
+	go miniRoutine(c, fn, extendedEnv, threadPool)
+	threadID := threadPool.Set(c)
+
+	return &object.ThreadID{Value: threadID}
+}
+
+func miniRoutine(c chan object.Object, fn *object.Function, env *object.Environment, threadPool *object.ThreadPool) {
+	c <- Eval(fn.Body, env, threadPool)
+	close(c)
+}
+
+func builtinAwaitFunction(obj object.Object, threadPool *object.ThreadPool) object.Object {
+	if obj.Type() != object.THREAD_ID_OBJ {
+		return newError("argument for await must be THREAD_ID. got=%T", obj.Type())
+	}
+	threadID, _ := obj.(*object.ThreadID)
+	c, ok := threadPool.Get(threadID.Value)
+	if !ok {
+		return newError("thread not found: %q", threadID)
+	}
+
+	// join thread
+	tmp, ok := <-c
+	var result object.Object
+	result = NULL
+	for ok {
+		result = tmp
+		tmp, ok = <-c
+	}
+
+	return result
 }

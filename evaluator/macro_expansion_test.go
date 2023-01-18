@@ -94,8 +94,9 @@ func TestExpandMacros(t *testing.T) {
 		expected := testParseProgram(tt.expected)
 		program := testParseProgram(tt.input)
 		env := object.NewEnvironment()
+		threadPool := object.NewThreadPool()
 		DefineMacros(program, env)
-		expanded := ExpandMacros(program, env)
+		expanded := ExpandMacros(program, env, threadPool)
 
 		if expanded.String() != expected.String() {
 			t.Errorf("not equal. want=%q, got=%q", expected.String(), expanded.String())

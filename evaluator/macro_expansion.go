@@ -46,7 +46,7 @@ func addMacro(stmt ast.Statement, env *object.Environment) {
 	env.Set(letStatement.Name.Value, macro)
 }
 
-func ExpandMacros(program ast.Node, env *object.Environment) ast.Node {
+func ExpandMacros(program ast.Node, env *object.Environment, threadPool *object.ThreadPool) ast.Node {
 	return ast.Modify(program, func(node ast.Node) ast.Node {
 		callExpression, ok := node.(*ast.CallExpression)
 		if !ok {
@@ -60,7 +60,7 @@ func ExpandMacros(program ast.Node, env *object.Environment) ast.Node {
 		args := quoteArgs(callExpression)
 		evalEnv := extendMacroEnv(macro, args)
 
-		evaluated := Eval(macro.Body, evalEnv)
+		evaluated := Eval(macro.Body, evalEnv, threadPool)
 
 		quote, ok := evaluated.(*object.Quote)
 		if !ok {

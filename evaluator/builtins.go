@@ -3,6 +3,7 @@ package evaluator
 import (
 	"fmt"
 	"monkey/object"
+	"time"
 )
 
 var buildins = map[string]*object.Builtin{
@@ -81,6 +82,19 @@ var buildins = map[string]*object.Builtin{
 			for _, arg := range args {
 				fmt.Println(arg.Inspect())
 			}
+			return NULL
+		},
+	},
+	"sleep": {
+		Fn: func(args ...object.Object) object.Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=2", len(args))
+			}
+			if args[0].Type() != object.INTEGER_OBJ {
+				return newError("argument to `sleep` must be INTEGER, got %s", args[0].Type())
+			}
+			dur, _ := args[0].(*object.Integer)
+			time.Sleep(time.Millisecond * time.Duration(dur.Value))
 			return NULL
 		},
 	},

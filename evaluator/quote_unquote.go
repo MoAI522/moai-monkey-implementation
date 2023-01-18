@@ -7,12 +7,12 @@ import (
 	"monkey/token"
 )
 
-func quote(node ast.Node, env *object.Environment) object.Object {
-	node = evalUnquoteCalls(node, env)
+func quote(node ast.Node, env *object.Environment, threadPool *object.ThreadPool) object.Object {
+	node = evalUnquoteCalls(node, env, threadPool)
 	return &object.Quote{Node: node}
 }
 
-func evalUnquoteCalls(quoted ast.Node, env *object.Environment) ast.Node {
+func evalUnquoteCalls(quoted ast.Node, env *object.Environment, threadPool *object.ThreadPool) ast.Node {
 	return ast.Modify(quoted, func(node ast.Node) ast.Node {
 		if !isUnquoteCall(node) {
 			return node
@@ -25,7 +25,7 @@ func evalUnquoteCalls(quoted ast.Node, env *object.Environment) ast.Node {
 		if len(call.Arguments) != 1 {
 			return node
 		}
-		unquoted := Eval(call.Arguments[0], env)
+		unquoted := Eval(call.Arguments[0], env, threadPool)
 		return convertObjectToASTNode(unquoted)
 	})
 }

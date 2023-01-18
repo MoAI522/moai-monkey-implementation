@@ -11,19 +11,22 @@ import (
 type ObjectType string
 
 const (
-	INTEGER_OBJ      = "INTEGER"
-	BOOLEAN_OBJ      = "BOOLEAN"
-	STRING_OBJ       = "STRING"
-	NULL_OBJ         = "NULL"
-	RETURN_VALUE_OBJ = "RETURN_VALUE"
-	ERROR_OBJ        = "ERROR"
-	FUNCTION_OBJ     = "FUNCTION"
-	BUILTIN_OBJ      = "BUILTIN"
-	BUILTIN_EVAL_OBJ = "BUILTIN_EVAL"
-	ARRAY_OBJ        = "ARRAY"
-	HASH_OBJ         = "HASH"
-	QUOTE_OBJ        = "QUOTE"
-	MACRO_OBJ        = "MACRO"
+	INTEGER_OBJ        = "INTEGER"
+	BOOLEAN_OBJ        = "BOOLEAN"
+	STRING_OBJ         = "STRING"
+	NULL_OBJ           = "NULL"
+	RETURN_VALUE_OBJ   = "RETURN_VALUE"
+	ERROR_OBJ          = "ERROR"
+	FUNCTION_OBJ       = "FUNCTION"
+	BUILTIN_OBJ        = "BUILTIN"
+	BUILTIN_EVAL_OBJ   = "BUILTIN_EVAL"
+	BUILTIN_LAUNCH_OBJ = "BUILTIN_LAUNCH"
+	BUILTIN_AWAIT_OBJ  = "BUILTIN_AWAIT"
+	ARRAY_OBJ          = "ARRAY"
+	HASH_OBJ           = "HASH"
+	QUOTE_OBJ          = "QUOTE"
+	MACRO_OBJ          = "MACRO"
+	THREAD_ID_OBJ      = "THREAD_ID"
 )
 
 type Object interface {
@@ -106,6 +109,16 @@ type BuiltinEval struct{}
 
 func (be *BuiltinEval) Type() ObjectType { return BUILTIN_EVAL_OBJ }
 func (be *BuiltinEval) Inspect() string  { return "builtin eval function" }
+
+type BuiltinLaunch struct{}
+
+func (bl *BuiltinLaunch) Type() ObjectType { return BUILTIN_LAUNCH_OBJ }
+func (bl *BuiltinLaunch) Inspect() string  { return "builtin launch function" }
+
+type BuiltinAwait struct{}
+
+func (ba *BuiltinAwait) Type() ObjectType { return BUILTIN_AWAIT_OBJ }
+func (ba *BuiltinAwait) Inspect() string  { return "builtin await function" }
 
 type Array struct {
 	Elements []Object
@@ -204,5 +217,18 @@ func (m *Macro) Inspect() string {
 	out.WriteString(") {\n")
 	out.WriteString(m.Body.String())
 	out.WriteString("\n}")
+	return out.String()
+}
+
+type ThreadID struct {
+	Value int64
+}
+
+func (ti *ThreadID) Type() ObjectType { return THREAD_ID_OBJ }
+func (ti *ThreadID) Inspect() string {
+	var out bytes.Buffer
+	out.WriteString("thread_id<")
+	out.WriteString(fmt.Sprintf("%d", ti.Value))
+	out.WriteString(">")
 	return out.String()
 }

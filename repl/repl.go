@@ -28,6 +28,7 @@ func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 	env := object.NewEnvironment()
 	macroEnv := object.NewEnvironment()
+	threadPool := object.NewThreadPool()
 
 	for {
 		fmt.Printf(PROMPT)
@@ -47,9 +48,9 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		evaluator.DefineMacros(program, macroEnv)
-		expanded := evaluator.ExpandMacros(program, macroEnv)
+		expanded := evaluator.ExpandMacros(program, macroEnv, threadPool)
 
-		evaluated := evaluator.Eval(expanded, env)
+		evaluated := evaluator.Eval(expanded, env, threadPool)
 		if evaluated != nil {
 			io.WriteString(out, evaluated.Inspect())
 			io.WriteString(out, "\n")
