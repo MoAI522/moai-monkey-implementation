@@ -442,6 +442,7 @@ func miniRoutine(c chan object.Object, fn *object.Function, env *object.Environm
 }
 
 // REVIEW[NAMING, COMMENT]: objという引数だと、何が入るのか分かりづらいが、型チェックをしていないので何が入っているか分からないという内部処理的な意味もあり、悩ましい
+// obj -> possibleThreadId がいいかも
 func builtinAwaitFunction(obj object.Object, threadPool *object.ThreadPool) object.Object {
 	// REVIEW[FLOW]: early return
 	if obj.Type() != object.THREAD_ID_OBJ {
