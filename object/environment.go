@@ -16,6 +16,7 @@ type Environment struct {
 	outer *Environment
 }
 
+// REVIEW[NAMING]: Getという名前だが、計算量が微妙に定数時間でない？
 func (e *Environment) Get(name string) (Object, bool) {
 	obj, ok := e.store[name]
 	if !ok && e.outer != nil {

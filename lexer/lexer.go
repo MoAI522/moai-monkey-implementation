@@ -33,6 +33,8 @@ func (l *Lexer) NextToken() token.Token {
 
 	l.skipWhitespace()
 
+	// REVIEW[FLOW]: インタプリタゆえに、switch文が非常に長いが、一つ一つのケースの処理は関数化されて十分に短い
+	// 細かい文字列処理があればnewTokenを呼び出す前に書き足せるので、拡張性も高い
 	switch l.ch {
 	case '=':
 		// TODO: こういう処理をmakeTwoCharTokenみたいな関数にまとめる
@@ -119,6 +121,8 @@ func (l *Lexer) readIdentifier() string {
 	return l.input[position:l.position]
 }
 
+// REVIEW[FLOW]: 各関数の処理は見れば理解できる程度の切り分け＆関数名もわかりやすい
+// ほぼユーティリティー関数だが、使い回さないのでファイル内に置いてある？
 // ここの条件次第で識別子名に任意の文字を使用可能
 func isLetter(ch byte) bool {
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
@@ -130,6 +134,7 @@ func (l *Lexer) skipWhitespace() {
 	}
 }
 
+// REVIEW[COMMENT]: 本の内容でTODO扱いのものや気づいた対応漏れはTODOコメントにしておいた
 // TODO: 小数点対応していない
 func isDigit(ch byte) bool {
 	return '0' <= ch && ch <= '9'

@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// REVIEW[TESTING]: テスト名が適切。
 func TestEvalIntegerExpression(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -28,6 +29,7 @@ func TestEvalIntegerExpression(t *testing.T) {
 		{"3 * (3 * 3) + 10", 37},
 		{"(5 + 10 * 2 + 15 / 3) * 2 + -10", 50},
 	}
+	// REVIEW[BEAUTY]: 空行でテストケースの定義とテストの実行を分けている
 
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
@@ -188,6 +190,7 @@ if (10 > 1) {
 
 		errObj, ok := evaluated.(*object.Error)
 		if !ok {
+			// REVIEW[TESTING]: エラー原因ごとにメッセージが違うので追いやすい。
 			t.Errorf("no error object returned. got=%T(%+v)",
 				evaluated, evaluated)
 			continue
@@ -289,6 +292,8 @@ func TestStringConcat(t *testing.T) {
 }
 
 func TestBuiltinFunctions(t *testing.T) {
+	// REVIEW[TESTING]: ユーティリティー関数があるおかげで、各テスト関数ではテストケースの作成に集中できている
+	// 入出力を一行程度で書ける。
 	tests := []struct {
 		input    string
 		expected interface{}
@@ -495,6 +500,7 @@ func TestBuiltinEvalFunction(t *testing.T) {
 	}
 }
 
+// REVIEW[TESTING]: テスト関数のユーティリティー化が積極的に行われている印象
 func testEval(input string) object.Object {
 	l := lexer.New(input)
 	p := parser.New(l)

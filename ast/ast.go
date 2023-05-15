@@ -11,6 +11,10 @@ type Node interface {
 	String() string
 }
 
+// REVIEW[NAMING]: StatementやExpressionといった命名は、コンパイラ領域の用語として知っていれば、理解しやすい
+// - どちらにせよその概念知っているのと知らないのでは理解のしやすさが大きく異なると考えられる
+// - -> 結局小手先の読みやすさよりドメイン知識の量の方がコード理解に影響大きいのでは？
+// - ドメイン知識前提とした命名とそうでない命名は分かれるのでは？
 type Statement interface {
 	Node
 	statementNode()
@@ -34,6 +38,7 @@ func (p *Program) TokenLiteral() string {
 }
 
 func (p *Program) String() string {
+	// REVIEW[VARIANTS]: これconstでいいのでは？他多数
 	var out bytes.Buffer
 
 	for _, s := range p.Statements {

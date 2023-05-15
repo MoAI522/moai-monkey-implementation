@@ -15,6 +15,7 @@ var (
 )
 
 func Eval(node ast.Node, env *object.Environment, threadPool *object.ThreadPool) object.Object {
+	// REVIEW[FLOW]: ここも長いswitch文だが、各ケースの処理が関数に切り出されている&関数名がわかりやすいので全体的に読みやすい。
 	switch node := node.(type) {
 	// Statements
 	case *ast.Program:
@@ -112,6 +113,7 @@ func evalProgram(stmts []ast.Statement, env *object.Environment, threadPool *obj
 		case *object.Error:
 			return result
 		}
+		// REVIEW: これたぶん消し忘れ
 		if returnValue, ok := result.(*object.ReturnValue); ok {
 			return returnValue.Value
 		}
@@ -125,6 +127,7 @@ func evalBlockStatements(block *ast.BlockStatement, env *object.Environment, thr
 		result = Eval(statement, env, threadPool)
 		if result != nil {
 			rt := result.Type()
+			// REVIEW[FLOW]: 変数が左、定数が右
 			if rt == object.RETURN_VALUE_OBJ || rt == object.ERROR_OBJ {
 				return result
 			}
@@ -140,6 +143,8 @@ func nativeBoolToBooleanObject(input bool) *object.Boolean {
 	return FALSE
 }
 
+// REVIEW[NAMING]: eval〇〇(Node種類)という命名はフォーマットができている。(2.6 名前のフォーマットで情報を伝える)
+// それぞれの機能が同列であることが分かり読みやすい。フォーマットがないと、引数はバラバラであるため、同じくくりに見えない。
 func evalPrefixExpression(operator string, right object.Object) object.Object {
 	switch operator {
 	case "!":
@@ -218,6 +223,7 @@ func evalIntegerInfixExpression(operator string, left, right object.Object) obje
 }
 
 func evalStringInfixExpression(operator string, left, right object.Object) object.Object {
+	// REVIEW[SPLIT]: 説明変数?
 	leftVal := left.(*object.String).Value
 	rightVal := right.(*object.String).Value
 	switch operator {
@@ -327,6 +333,7 @@ func applyFunction(fn object.Object, args []object.Object, env *object.Environme
 
 }
 
+// REVIEW[SPLIT]: 下位問題の抽出
 func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
 	env := object.NewEnclosedEnvironment(fn.Env)
 
@@ -434,7 +441,9 @@ func miniRoutine(c chan object.Object, fn *object.Function, env *object.Environm
 	close(c)
 }
 
+// REVIEW[NAMING, COMMENT]: objという引数だと、何が入るのか分かりづらいが、型チェックをしていないので何が入っているか分からないという内部処理的な意味もあり、悩ましい
 func builtinAwaitFunction(obj object.Object, threadPool *object.ThreadPool) object.Object {
+	// REVIEW[FLOW]: early return
 	if obj.Type() != object.THREAD_ID_OBJ {
 		return newError("argument for await must be THREAD_ID. got=%T", obj.Type())
 	}
@@ -444,6 +453,7 @@ func builtinAwaitFunction(obj object.Object, threadPool *object.ThreadPool) obje
 		return newError("thread not found: %q", threadID)
 	}
 
+	// REVIEW[COMMENT]: Javaでいうところのjoin処理という意味でコメントしたが、分かりづらいかも
 	// join thread
 	tmp, ok := <-c
 	var result object.Object

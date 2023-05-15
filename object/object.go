@@ -34,6 +34,7 @@ type Object interface {
 	Inspect() string
 }
 
+// REVIEW[BEAUTY]: 定義の順番がType -> Inspectで統一されている。
 type Integer struct {
 	Value int64
 }
